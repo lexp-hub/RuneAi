@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RuneAi - Pannello di Controllo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --panel-bg: rgba(17, 25, 40, 0.6);
+      --panel-border: rgba(255, 255, 255, 0.08);
+      --text-color: #f3f4f6;
+      --text-muted: #9ca3af;
+      --accent-color: #8b5cf6; /* Violet */
+      --accent-glow: rgba(139, 92, 246, 0.4);
+      --success-color: #10b981; /* Emerald */
+      --danger-color: #ef4444; /* Rose */
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      min-height: 100vh;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(at 10% 20%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+        radial-gradient(at 90% 80%, rgba(139, 92, 246, 0.15) 0px, transparent 50%);
+      background-attachment: fixed;
+    }
+
+    /* Loading state overlay */
+    #loader {
+      position: fixed;
+      inset: 0;
+      background: var(--bg-color);
+      z-index: 1000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: opacity 0.3s ease;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      border-left-color: var(--accent-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Screen: Login */
+    #login-screen {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      width: 100%;
+      padding: 20px;
+    }
+
+    .glass-card {
+      background: var(--panel-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      padding: 40px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      text-align: center;
+      animation: fadeIn 0.5s ease;
+    }
+
+    .logo-container {
+      margin-bottom: 24px;
+    }
+
+    .logo-img {
+      width: 72px;
+      height: 72px;
+      object-fit: contain;
+      margin-bottom: 12px;
+      display: inline-block;
+      animation: pulse 2.5s infinite;
+      filter: invert(1) drop-shadow(0 0 8px rgba(167, 139, 250, 0.6));
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.05em;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-bottom: 30px;
+    }
+
+    .input-group {
+      margin-bottom: 20px;
+      text-align: left;
+      position: relative;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: var(--text-color);
+      font-size: 14px;
+      outline: none;
+      transition: all 0.3s;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--accent-color);
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    .btn {
+      width: 100%;
+      background: linear-gradient(135deg, #8b5cf6, #6366f1);
+      border: none;
+      border-radius: 8px;
+      padding: 12px 20px;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    /* Screen: Dashboard */
+    #dashboard-screen {
+      display: none;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      animation: fadeIn 0.5s ease;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 40px;
+    }
+
+    .bot-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: var(--success-color);
+      box-shadow: 0 0 8px var(--success-color);
+    }
+
+    .status-dot.offline {
+      background-color: var(--danger-color);
+      box-shadow: 0 0 8px var(--danger-color);
+    }
+
+    .btn-logout {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 8px 16px;
+      border-radius: 8px;
+      color: var(--text-color);
+      font-weight: 500;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-logout:hover {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: var(--danger-color);
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    .stat-card {
+      background: var(--panel-bg);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .stat-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-color);
+    }
+
+    /* Main Section: Two columns */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 30px;
+    }
+
+    @media (max-width: 900px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .section-card {
+      background: var(--panel-bg);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 250px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    /* Channels / History list */
+    .channel-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 400px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .channel-item {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s;
+    }
+
+    .channel-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .channel-name {
+      font-weight: 500;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .channel-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .channel-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-color);
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .btn-small:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-small.danger:hover {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: var(--danger-color);
+      color: #fecaca;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .modal-content {
+      background: #111827;
+      border: 1px solid var(--panel-border);
+      width: 100%;
+      max-width: 650px;
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      max-height: 80vh;
+    }
+
+    .modal-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--panel-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .modal-footer {
+      padding: 15px 20px;
+      border-top: 1px solid var(--panel-border);
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .chat-bubble {
+      padding: 12px 16px;
+      border-radius: 12px;
+      max-width: 85%;
+      font-size: 13.5px;
+      line-height: 1.4;
+    }
+
+    .chat-bubble.user {
+      background: rgba(139, 92, 246, 0.15);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      align-self: flex-start;
+    }
+
+    .chat-bubble.assistant {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      align-self: flex-end;
+    }
+
+    .chat-bubble.system {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      align-self: center;
+      text-align: center;
+      max-width: 100%;
+      font-style: italic;
+      color: #fca5a5;
+    }
+
+    .bubble-meta {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      text-align: right;
+    }
+
+    /* Toast Notification */
+    .toast-container {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 500;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toast {
+      background: rgba(17, 25, 40, 0.9);
+      border: 1px solid var(--panel-border);
+      border-left: 4px solid var(--accent-color);
+      border-radius: 8px;
+      padding: 12px 20px;
+      color: var(--text-color);
+      font-size: 13.5px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transform: translateX(120%);
+      transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+    }
+
+    .toast.show {
+      transform: translateX(0);
+    }
+
+    .toast.success {
+      border-left-color: var(--success-color);
+    }
+
+    .toast.danger {
+      border-left-color: var(--danger-color);
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Spinner Loader -->
+  <div id="loader">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- Schermata di Login -->
+  <div id="login-screen" style="display: none;">
+    <div class="glass-card">
+      <div class="logo-container">
+        <img src="logo.png" alt="RuneAi Logo" class="logo-img">
+        <h1>RuneAi</h1>
+        <p class="subtitle">Inserisci la password di amministrazione</p>
+      </div>
+      <form id="login-form">
+        <div class="input-group">
+          <label for="backend-url">URL del Bot (Wispbyte/Locale)</label>
+          <input type="url" id="backend-url" placeholder="http://localhost:3000 (o lascia vuoto per default)">
+        </div>
+        <div class="input-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn">Accedi</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Schermata Principale della Dashboard -->
+  <div id="dashboard-screen">
+    <header>
+      <div class="bot-info">
+        <img src="logo.png" alt="RuneAi Logo" style="width: 32px; height: 32px; object-fit: contain; filter: invert(1) drop-shadow(0 0 4px rgba(167, 139, 250, 0.6)); margin-right: 12px;">
+        <div class="status-dot" id="header-status-dot"></div>
+        <div>
+          <h1 style="font-size: 20px;">RuneAi</h1>
+          <span style="font-size: 12px; color: var(--text-muted);" id="header-bot-tag">Caricamento...</span>
+        </div>
+      </div>
+      <button class="btn-logout" onclick="logout()">Disconnetti</button>
+    </header>
+
+    <!-- Griglia Statistiche -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-title">Stato Discord</span>
+        <span class="stat-value" id="stat-discord" style="color: var(--success-color);">Connesso</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-title">Latenza WebSocket</span>
+        <span class="stat-value" id="stat-ping">-- ms</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-title">Uptime Bot</span>
+        <span class="stat-value" id="stat-uptime">--</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-title">Uso RAM (Heap)</span>
+        <span class="stat-value" id="stat-ram">-- MB</span>
+      </div>
+    </div>
+
+    <!-- Layout Principale a due Colonne -->
+    <div class="main-grid">
+      <!-- Colonna Sinistra: Configurazione Personalità e Modello -->
+      <div class="section-card">
+        <div>
+          <h2 class="section-title">🔮 Configurazione AI</h2>
+          <p style="font-size: 13px; color: var(--text-muted);">Personalizza l'identità del bot e seleziona il modello in tempo reale.</p>
+        </div>
+        
+        <form id="config-form" style="display: flex; flex-direction: column; gap: 20px;">
+          <div class="input-group" style="margin-bottom: 0;">
+            <label for="config-model">Modello Cloudflare Workers AI</label>
+            <select id="config-model">
+              <option value="@cf/meta/llama-3.3-70b-instruct-fp8-fast">Meta Llama 3.3 70B Instruct (FP8 Fast) - Raccomandato</option>
+              <option value="@cf/meta/llama-3.1-8b-instruct-fast">Meta Llama 3.1 8B Instruct (Fast)</option>
+              <option value="@cf/meta/llama-3.2-11b-vision-instruct">Meta Llama 3.2 11B Vision Instruct</option>
+              <option value="@cf/meta/llama-4-scout-17b-16e-instruct">Meta Llama 4 Scout 17B Instruct</option>
+              <option value="@cf/zai-org/glm-4.7-flash">Zhipu GLM 4.7 Flash</option>
+              <option value="@cf/qwen/qwen3-30b-a3b-fp8">Alibaba Qwen 3 30B FP8</option>
+            </select>
+          </div>
+
+          <div class="input-group" style="margin-bottom: 0;">
+            <label for="config-identity">Identità di Base (System Prompt)</label>
+            <textarea id="config-identity" placeholder="Scrivi qui la personalità del bot..."></textarea>
+          </div>
+
+          <button type="submit" class="btn" style="margin-top: 10px;">Salva Configurazione</button>
+        </form>
+      </div>
+
+      <!-- Colonna Destra: Canali Attivi / Cronologia -->
+      <div class="section-card">
+        <div>
+          <h2 class="section-title">📁 Canali Attivi & Memoria</h2>
+          <p style="font-size: 13px; color: var(--text-muted);">Visualizza i canali che hanno log di conversazioni e gestisci la memoria.</p>
+        </div>
+
+        <div class="channel-list" id="channel-list-container">
+          <p style="font-size: 13px; color: var(--text-muted); text-align: center; padding: 20px;">Nessun canale registrato in memoria.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Visualizzazione Log Chat -->
+  <div class="modal-overlay" id="log-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 style="font-size: 18px; font-weight: 600;" id="modal-channel-title">Dettaglio Log Canale</h2>
+        <button class="btn-small danger" style="padding: 4px 8px;" onclick="closeModal()">Chiudi</button>
+      </div>
+      <div class="modal-body" id="modal-chat-body">
+        <!-- I messaggi della chat compaiono qui -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn-small" onclick="closeModal()">Chiudi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script>
+    let token = localStorage.getItem('runeai_token') || '';
+    let backendUrl = localStorage.getItem('runeai_backend_url') || '';
+
+    // Mostra un popup temporaneo (Toast)
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      
+      setTimeout(() => toast.classList.add('show'), 50);
+      
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // Loader helper
+    function showLoader() { document.getElementById('loader').style.display = 'flex'; }
+    function hideLoader() { document.getElementById('loader').style.display = 'none'; }
+
+    // Init App
+    window.addEventListener('DOMContentLoaded', () => {
+      if (backendUrl) {
+        document.getElementById('backend-url').value = backendUrl;
+      }
+      if (token) {
+        checkAuthAndLoad();
+      } else {
+        hideLoader();
+        document.getElementById('login-screen').style.display = 'flex';
+      }
+
+      // Login handler
+      document.getElementById('login-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const pass = document.getElementById('password').value;
+        let bUrl = document.getElementById('backend-url').value.trim();
+        if (bUrl.endsWith('/')) bUrl = bUrl.slice(0, -1);
+        backendUrl = bUrl;
+        localStorage.setItem('runeai_backend_url', backendUrl);
+
+        showLoader();
+        try {
+          const res = await fetch(`${backendUrl || window.location.origin}/api/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pass })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            token = data.token;
+            localStorage.setItem('runeai_token', token);
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('dashboard-screen').style.display = 'block';
+            await loadDashboardData();
+            showToast('Accesso effettuato con successo!');
+          } else {
+            showToast(data.error || 'Password non valida', 'danger');
+          }
+        } catch (err) {
+          showToast('Errore di rete durante il login', 'danger');
+        } finally {
+          hideLoader();
+        }
+      });
+
+      // Config save handler
+      document.getElementById('config-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const baseIdentity = document.getElementById('config-identity').value;
+        const cloudflareModel = document.getElementById('config-model').value;
+        
+        showLoader();
+        try {
+          const res = await fetch(`${backendUrl || window.location.origin}/api/config`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ baseIdentity, cloudflareModel })
+          });
+          if (res.ok) {
+            showToast('Configurazione salvata ed applicata!');
+            await loadDashboardData();
+          } else {
+            const data = await res.json();
+            showToast(data.error || 'Errore nel salvataggio', 'danger');
+          }
+        } catch (err) {
+          showToast('Errore di rete', 'danger');
+        } finally {
+          hideLoader();
+        }
+      });
+    });
+
+    async function checkAuthAndLoad() {
+      try {
+        const res = await fetch(`${backendUrl || window.location.origin}/api/status`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          document.getElementById('login-screen').style.display = 'none';
+          document.getElementById('dashboard-screen').style.display = 'block';
+          await loadDashboardData();
+        } else {
+          localStorage.removeItem('runeai_token');
+          token = '';
+          document.getElementById('login-screen').style.display = 'flex';
+          document.getElementById('dashboard-screen').style.display = 'none';
+        }
+      } catch (err) {
+        showToast('Impossibile connettersi al backend', 'danger');
+        document.getElementById('login-screen').style.display = 'flex';
+      } finally {
+        hideLoader();
+      }
+    }
+
+    async function loadDashboardData() {
+      try {
+        // Carica stato
+        const statusRes = await fetch(`${backendUrl || window.location.origin}/api/status`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!statusRes.ok) throw new Error();
+        const status = await statusRes.json();
+
+        // Popola stato
+        document.getElementById('header-bot-tag').textContent = status.botTag;
+        const dot = document.getElementById('header-status-dot');
+        if (status.discordStatus === 'Online') {
+          dot.className = 'status-dot';
+          document.getElementById('stat-discord').textContent = 'Online';
+          document.getElementById('stat-discord').style.color = 'var(--success-color)';
+        } else {
+          dot.className = 'status-dot offline';
+          document.getElementById('stat-discord').textContent = 'Offline';
+          document.getElementById('stat-discord').style.color = 'var(--danger-color)';
+        }
+        document.getElementById('stat-ping').textContent = status.ping + ' ms';
+        
+        // Format Uptime
+        const seconds = status.uptime;
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = seconds % 60;
+        document.getElementById('stat-uptime').textContent = `${h}h ${m}m ${s}s`;
+        document.getElementById('stat-ram').textContent = status.memoryUsage;
+
+        // Carica configurazione
+        const configRes = await fetch(`${backendUrl || window.location.origin}/api/config`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const config = await configRes.json();
+        document.getElementById('config-identity').value = config.baseIdentity;
+        document.getElementById('config-model').value = config.cloudflareModel;
+
+        // Carica canali
+        await loadChannels();
+      } catch (err) {
+        showToast('Errore nel caricamento dei dati', 'danger');
+      }
+    }
+
+    async function loadChannels() {
+      const container = document.getElementById('channel-list-container');
+      try {
+        const res = await fetch(`${backendUrl || window.location.origin}/api/history`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const channels = await res.json();
+        
+        if (channels.length === 0) {
+          container.innerHTML = '<p style="font-size: 13px; color: var(--text-muted); text-align: center; padding: 20px;">Nessun canale registrato in memoria.</p>';
+          return;
+        }
+
+        container.innerHTML = '';
+        channels.forEach(ch => {
+          const item = document.createElement('div');
+          item.className = 'channel-item';
+          
+          const dateStr = new Date(ch.lastUpdated).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          const hasReset = ch.resetTimestamp > 0 ? `<br><span style="font-size: 10px; color:#ef4444;">Reset: ${new Date(ch.resetTimestamp).toLocaleTimeString('it-IT')}</span>` : '';
+
+          item.innerHTML = `
+            <div>
+              <div class="channel-name"># ${ch.channelId}</div>
+              <div class="channel-meta">Aggiornato: ${dateStr} | Log: ${ch.messageCount}${hasReset}</div>
+            </div>
+            <div class="channel-actions">
+              <button class="btn-small" onclick="viewLog('${ch.channelId}')">Log</button>
+              <button class="btn-small danger" onclick="resetChannelMemory('${ch.channelId}')">Reset</button>
+            </div>
+          `;
+          container.appendChild(item);
+        });
+      } catch (err) {
+        showToast('Errore nel caricamento dei canali', 'danger');
+      }
+    }
+
+    async function viewLog(channelId) {
+      showLoader();
+      try {
+        const res = await fetch(`${backendUrl || window.location.origin}/api/history/${channelId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        
+        const body = document.getElementById('modal-chat-body');
+        document.getElementById('modal-channel-title').textContent = `Log Canale: # ${channelId}`;
+        body.innerHTML = '';
+
+        if (!data.logs || data.logs.length === 0) {
+          body.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px;">Nessun messaggio memorizzato.</p>';
+        } else {
+          data.logs.forEach(log => {
+            const bubble = document.createElement('div');
+            // Gestione dei diversi ruoli nel visualizzatore log
+            let roleClass = log.role === 'assistant' ? 'assistant' : 'user';
+            if (log.role === 'system') roleClass = 'system';
+            
+            bubble.className = `chat-bubble ${roleClass}`;
+            
+            const timeStr = new Date(log.timestamp).toLocaleTimeString('it-IT');
+            const cleanContent = log.content.replace(/<@!?\d+>/g, '@Bot');
+            
+            bubble.innerHTML = `
+              <div><strong>${log.role === 'assistant' ? 'RuneAi' : 'Utente'}</strong>: ${cleanContent}</div>
+              <div class="bubble-meta">${timeStr}</div>
+            `;
+            body.appendChild(bubble);
+          });
+        }
+
+        // Se c'è una data di reset, inserisci una nota in cima
+        if (data.resetTime > 0) {
+          const resetBanner = document.createElement('div');
+          resetBanner.className = 'chat-bubble system';
+          resetBanner.innerHTML = `Nota: La memoria attiva del canale Discord è stata azzerata dopo il ${new Date(data.resetTime).toLocaleString('it-IT')}. I messaggi precedenti a questa data sono ignorati dal bot.`;
+          body.insertBefore(resetBanner, body.firstChild);
+        }
+
+        document.getElementById('log-modal').style.display = 'flex';
+      } catch (err) {
+        showToast('Errore nel caricamento del log', 'danger');
+      } finally {
+        hideLoader();
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('log-modal').style.display = 'none';
+    }
+
+    async function resetChannelMemory(channelId) {
+      if (!confirm(`Sei sicuro di voler azzerare la memoria del canale # ${channelId}?`)) {
+        return;
+      }
+      showLoader();
+      try {
+        const res = await fetch(`${backendUrl || window.location.origin}/api/history/${channelId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          showToast('Memoria del canale azzerata!');
+          await loadChannels();
+        } else {
+          showToast('Errore durante l\'azzeramento della memoria', 'danger');
+        }
+      } catch (err) {
+        showToast('Errore di rete', 'danger');
+      } finally {
+        hideLoader();
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('runeai_token');
+      token = '';
+      document.getElementById('login-screen').style.display = 'flex';
+      document.getElementById('dashboard-screen').style.display = 'none';
+      showToast('Sessione chiusa');
+    }
+  </script>
+</body>
+</html>
