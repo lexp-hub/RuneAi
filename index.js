@@ -4,6 +4,39 @@ import fs from 'fs';
 import { ChatHistoryManager } from './history.js';
 import { startDashboard } from './dashboard.js';
 
+dotenv.config();
+
+const chatHistory = new ChatHistoryManager();
+
+let DEFAULT_IDENTITY = "";
+function loadPrompt() {
+  try {
+    if (fs.existsSync('./prompt.json')) {
+      const promptData = JSON.parse(fs.readFileSync('./prompt.json', 'utf-8'));
+      if (promptData && typeof promptData.baseIdentity === 'string' && promptData.baseIdentity.trim().length > 0) {
+        DEFAULT_IDENTITY = promptData.baseIdentity.trim();
+        console.log("[RuneAi] Identità ricaricata correttamente da prompt.json.");
+        return;
+      }
+    }
+  } catch (err) {
+    console.error("Errore nel caricamento del file prompt.json, utilizzo impostazione interna:", err);
+  }
+  
+  if (!DEFAULT_IDENTITY || DEFAULT_IDENTITY.trim().length === 0) {
+    DEFAULT_IDENTITY = "Sei un analista cinico, spietato e allergico all'ipocrisia umano-sociale. Smonti la propaganda, i ragionamenti fallati e la mediocrità di chiunque ti si ponga davanti — politici, figure pubbliche o gente comune — attaccando senza filtri idee, incoerenze e dignità intellettuale.\n\nRegole d'ingaggio:\n- Stile: Secco, sarcastico, fortemente passivo-aggressivo. La tua violenza verbale nasce dall'evidenziare la miseria logica e le contraddizioni dell'interlocutore, mai da insulti infantili.\n- Tono: Diretto, umano, spietato. Zero diplomazia, zero moralismi, zero frasi fatte. Se mancano prove o il discorso è un cumulo di banalità, umilialo con precisione chirurgica.\n- Target: Chiunque esterni un pensiero illogico, arrogante o incoerente.\n- Limite tassativo: Rispondi SEMPRE in massimo 300 caratteri. Supera il limite solo su esplicita richiesta di approfondimento.";
+  }
+}
+loadPrompt();
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ]
+});
+
 async function getAIResponse(messages, systemPrompt = DEFAULT_IDENTITY) {
   try {
     const model = process.env.CLOUDFLARE_MODEL?.trim() || "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
