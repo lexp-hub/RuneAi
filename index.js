@@ -41,9 +41,10 @@ async function generateAIImage(prompt) {
     }
 
     const imageModels = [
+      "@cf/black-forest-labs/flux-1-dev",
+      "@cf/black-forest-labs/flux-1-schnell",
       "@cf/bytedance/stable-diffusion-xl-lightning",
-      "@cf/stabilityai/stable-diffusion-xl-base-1.0",
-      "@cf/black-forest-labs/flux-1-schnell"
+      "@cf/stabilityai/stable-diffusion-xl-base-1.0"
     ];
 
     for (const model of imageModels) {
