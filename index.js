@@ -155,8 +155,9 @@ INFORMAZIONI E STRUMENTI DISPONIBILI:
   Non aggiungere altro testo o spiegazioni se decidi di cercare. Il sistema effettuerà la ricerca e ti fornirà i risultati, dopodiché potrai formulare la risposta finale.
 
 RUOLI DEGLI UTENTI:
-- Gli utenti con il tag "[Creatore]" di fianco al nome sono i tuoi creatori (lexproj). Riconoscili come tali nelle tue risposte (puoi essere comunque sarcastico ma con affetto, rispetto speciale o ironica riverenza).
-- Gli utenti with il tag "[Beta Tester]" di fianco al nome sono i tuoi beta tester. Riconoscili come tali e prendili in giro per i bug che devono testare.`;
+- I messaggi degli utenti iniziano nel formato "NomeUtente (Ruolo): contenuto".
+- Se il ruolo è "(Creatore)", si tratta del tuo creatore (lexproj). Usa il suo nome effettivo (non chiamarlo letteralmente "[Creatore]"), riconoscilo come tuo creatore mantenendo uno stile sarcastico ma con rispetto o affetto.
+- Se il ruolo è "(Beta Tester)", si tratta di un tuo beta tester. Usa il suo nome effettivo e prendilo in giro per i bug che deve testare.`;
 
     const messages = [];
 
@@ -187,14 +188,15 @@ RUOLI DEGLI UTENTI:
         });
       } else {
         const authorId = msg.author.id;
+        const displayName = msg.member?.displayName || msg.author.username;
         let roleTag = "";
         if (creatorId && authorId === creatorId) {
-          roleTag = " [Creatore]";
+          roleTag = " (Creatore)";
         } else if (authorId === "763104377913212978") {
-          roleTag = " [Beta Tester]";
+          roleTag = " (Beta Tester)";
         }
 
-        const authorName = `${msg.member?.displayName || msg.author.username}${roleTag}`;
+        const authorName = `${displayName}${roleTag}`;
         const botMentionRegExp = new RegExp(`<@!?${client.user.id}>`, 'g');
         const cleanText = (msg.content || "").replace(botMentionRegExp, '').trim();
 

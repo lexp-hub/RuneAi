@@ -523,12 +523,10 @@
 </head>
 <body>
 
-  <!-- Spinner Loader -->
   <div id="loader">
     <div class="spinner"></div>
   </div>
 
-  <!-- Schermata di Login -->
   <div id="login-screen" style="display: none;">
     <div class="glass-card">
       <div class="logo-container">
@@ -550,7 +548,6 @@
     </div>
   </div>
 
-  <!-- Schermata Principale della Dashboard -->
   <div id="dashboard-screen">
     <div class="banner-container">
       <img src="banner.png?v=3" alt="RuneAi Banner" class="banner-img">
@@ -567,7 +564,6 @@
       <button class="btn-logout" onclick="logout()">Disconnetti</button>
     </header>
 
-    <!-- Griglia Statistiche -->
     <div class="stats-grid">
       <div class="stat-card">
         <span class="stat-title">Stato Discord</span>
@@ -587,9 +583,7 @@
       </div>
     </div>
 
-    <!-- Layout Principale a due Colonne -->
     <div class="main-grid">
-      <!-- Colonna Sinistra: Configurazione Personalità e Modello -->
       <div class="section-card">
         <div>
           <h2 class="section-title">🔮 Configurazione AI</h2>
@@ -618,7 +612,6 @@
         </form>
       </div>
 
-      <!-- Colonna Destra: Canali Attivi / Cronologia -->
       <div class="section-card">
         <div>
           <h2 class="section-title">📁 Canali Attivi & Memoria</h2>
@@ -632,7 +625,6 @@
     </div>
   </div>
 
-  <!-- Modal Visualizzazione Log Chat -->
   <div class="modal-overlay" id="log-modal">
     <div class="modal-content">
       <div class="modal-header">
@@ -640,7 +632,6 @@
         <button class="btn-small danger" style="padding: 4px 8px;" onclick="closeModal()">Chiudi</button>
       </div>
       <div class="modal-body" id="modal-chat-body">
-        <!-- I messaggi della chat compaiono qui -->
       </div>
       <div class="modal-footer">
         <button class="btn-small" onclick="closeModal()">Chiudi</button>
@@ -648,7 +639,6 @@
     </div>
   </div>
 
-  <!-- Toast Container -->
   <div class="toast-container" id="toast-container"></div>
 
   <script>
@@ -656,7 +646,6 @@
     let backendUrl = localStorage.getItem('runeai_backend_url') || '';
     let statsInterval = null;
 
-    // Mostra un popup temporaneo (Toast)
     function showToast(message, type = 'success') {
       const container = document.getElementById('toast-container');
       const toast = document.createElement('div');
@@ -672,18 +661,16 @@
       }, 3500);
     }
 
-    // Loader helper
     function showLoader() { document.getElementById('loader').style.display = 'flex'; }
     function hideLoader() { document.getElementById('loader').style.display = 'none'; }
 
-    // Polling per aggiornamento statistiche in tempo reale (senza ricaricare la pagina)
     function startStatsPolling() {
       if (statsInterval) clearInterval(statsInterval);
       statsInterval = setInterval(() => {
         if (token) {
-          loadDashboardData(true); // silent refresh
+          loadDashboardData(true);
         }
-      }, 3000); // ogni 3 secondi
+      }, 3000);
     }
 
     function stopStatsPolling() {
@@ -693,7 +680,6 @@
       }
     }
 
-    // Init App
     window.addEventListener('DOMContentLoaded', () => {
       if (backendUrl) {
         document.getElementById('backend-url').value = backendUrl;
@@ -705,7 +691,6 @@
         document.getElementById('login-screen').style.display = 'flex';
       }
 
-      // Login handler
       document.getElementById('login-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const pass = document.getElementById('password').value;
@@ -740,7 +725,6 @@
         }
       });
 
-      // Config save handler
       document.getElementById('config-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const baseIdentity = document.getElementById('config-identity').value;
@@ -799,14 +783,12 @@
 
     async function loadDashboardData(isSilent = false) {
       try {
-        // Carica stato
         const statusRes = await fetch(`${backendUrl || window.location.origin}/api/status`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!statusRes.ok) throw new Error();
         const status = await statusRes.json();
 
-        // Popola stato
         document.getElementById('header-bot-tag').textContent = status.botTag;
         const dot = document.getElementById('header-status-dot');
         if (status.discordStatus === 'Online') {
@@ -820,7 +802,6 @@
         }
         document.getElementById('stat-ping').textContent = status.ping + ' ms';
         
-        // Format Uptime
         const seconds = status.uptime;
         const h = Math.floor(seconds / 3600);
         const m = Math.floor((seconds % 3600) / 60);
@@ -828,7 +809,6 @@
         document.getElementById('stat-uptime').textContent = `${h}h ${m}m ${s}s`;
         document.getElementById('stat-ram').textContent = status.memoryUsage;
 
-        // Se non è silenziato, aggiorna anche il form della personalità (evitando di sovrascrivere se l'utente sta digitando)
         if (!isSilent) {
           const configRes = await fetch(`${backendUrl || window.location.origin}/api/config`, {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -842,7 +822,6 @@
           }
         }
 
-        // Carica canali
         await loadChannels(isSilent);
       } catch (err) {
         if (!isSilent) {
@@ -906,7 +885,6 @@
         } else {
           data.logs.forEach(log => {
             const bubble = document.createElement('div');
-            // Gestione dei diversi ruoli nel visualizzatore log
             let roleClass = log.role === 'assistant' ? 'assistant' : 'user';
             if (log.role === 'system') roleClass = 'system';
             
@@ -923,7 +901,6 @@
           });
         }
 
-        // Se c'è una data di reset, inserisci una nota in cima
         if (data.resetTime > 0) {
           const resetBanner = document.createElement('div');
           resetBanner.className = 'chat-bubble system';
