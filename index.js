@@ -286,26 +286,6 @@ ISTRUZIONI NOMI E RUOLI DEGLI UTENTI:
 
     let reply = await getAIResponse(messages, systemPrompt);
 
-    const drawMatch = reply.match(/\[DISEGNA:\s*(.*?)\]/i);
-    if (drawMatch) {
-      const imagePrompt = drawMatch[1].trim();
-      console.log(`[RuneAi] Generazione immagine richiesta per: "${imagePrompt}"`);
-
-      const imageBuffer = await generateAIImage(imagePrompt);
-
-      if (imageBuffer) {
-        const attachment = new AttachmentBuilder(imageBuffer, { name: 'runeai-image.png' });
-        chatHistory.addLog(message.channel.id, 'user', `${message.author.username}: ${question}`);
-        chatHistory.addLog(message.channel.id, 'assistant', `[Immagine Generata: ${imagePrompt}]`);
-        return message.reply({
-          content: `Ecco l'immagine richiesta per: *"${imagePrompt}"*`,
-          files: [attachment]
-        });
-      } else {
-        reply = "Ho provato a generare l'immagine, ma l'algoritmo si è rifiutato. Riprova con una descrizione diversa.";
-      }
-    }
-
     const searchMatch = reply.match(/\[CERCA:\s*(.*?)\]/i);
     if (searchMatch) {
       const searchQuery = searchMatch[1].trim();
