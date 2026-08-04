@@ -139,29 +139,46 @@ async function performWebSearch(query) {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
       }
     });
-    if (!res.ok) throw new Error(`DuckDuckGo error: ${res.statusText}`);
-    const text = await res.text();
-    const regex = /<a class="result__url"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<a class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g;
-    const matches = [...text.matchAll(regex)];
-    const results = [];
-    for (let i = 0; i < Math.min(matches.length, 4); i++) {
-      const rawUrl = matches[i][1];
-      let url = rawUrl;
-      if (url.includes('uddg=')) {
-        const match = url.match(/uddg=([^&]+)/);
-        if (match) {
-          url = decodeURIComponent(match[1]);
+    if (res.ok) {
+      const text = await res.text();
+      const regex = /<a class="result__url"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<a class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g;
+      const matches = [...text.matchAll(regex)];
+      const results = [];
+      for (let i = 0; i < Math.min(matches.length, 4); i++) {
+        const rawUrl = matches[i][1];
+        let url = rawUrl;
+        if (url.includes('uddg=')) {
+          const match = url.match(/uddg=([^&]+)/);
+          if (match) url = decodeURIComponent(match[1]);
         }
+        const title = matches[i][2].replace(/<[^>]*>/g, '').trim().replace(/&amp;/g, '&').replace(/&#x27;/g, "'").replace(/&quot;/g, '"');
+        const snippet = matches[i][3].replace(/<[^>]*>/g, '').trim().replace(/&amp;/g, '&').replace(/&#x27;/g, "'").replace(/&quot;/g, '"');
+        results.push(`- **${title}**\n  URL: ${url}\n  Snippet: ${snippet}`);
       }
-      const title = matches[i][2].replace(/<[^>]*>/g, '').trim().replace(/&amp;/g, '&').replace(/&#x27;/g, "'").replace(/&quot;/g, '"');
-      const snippet = matches[i][3].replace(/<[^>]*>/g, '').trim().replace(/&amp;/g, '&').replace(/&#x27;/g, "'").replace(/&quot;/g, '"');
-      results.push(`- **${title}**\n  URL: ${url}\n  Snippet: ${snippet}`);
+      if (results.length > 0) return results.join("\n\n");
     }
-    return results.length > 0 ? results.join("\n\n") : "Nessun risultato trovato.";
   } catch (err) {
-    console.error("Errore nella ricerca web:", err);
-    return `Errore durante la ricerca web: ${err.message}`;
+    console.warn("[RuneAi] Ricerca DuckDuckGo HTML fallita, tento fallback Wikipedia...", err);
   }
+
+  try {
+    const wikiRes = await fetch(`https://it.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json`);
+    if (wikiRes.ok) {
+      const data = await wikiRes.json();
+      const searchResults = data?.query?.search || [];
+      if (searchResults.length > 0) {
+        const results = searchResults.slice(0, 3).map(r => {
+          const cleanSnippet = r.snippet.replace(/<[^>]*>/g, '');
+          return `- **${r.title}** (Wikipedia)\n  Snippet: ${cleanSnippet}`;
+        });
+        return results.join("\n\n");
+      }
+    }
+  } catch (err) {
+    console.error("Errore fallback Wikipedia:", err);
+  }
+
+  return "Nessun risultato rilevante trovato sul web per questa ricerca.";
 }
 
 client.once('ready', () => {
@@ -174,23 +191,24 @@ client.on('messageCreate', async (message) => {
   const isMentioned = message.mentions.has(client.user) && !message.mentions.everyone;
 
   if (isMentioned) {
-    const botMentionRegExp = new RegExp(`<@!?${client.user.id}>`, 'g');
-    const question = message.content.replace(botMentionRegExp, '').trim();
+    try {
+      const botMentionRegExp = new RegExp(`<@!?${client.user.id}>`, 'g');
+      const question = message.content.replace(botMentionRegExp, '').trim();
 
-    if (!question) {
-      return message.reply("Dimmi pure, sono qui. (Anche se preferirei fossi altrove).");
-    }
+      if (!question) {
+        return message.reply("Dimmi pure, sono qui. (Anche se preferirei fossi altrove).");
+      }
 
-    const cleanQuestion = question.toLowerCase();
-    if (cleanQuestion === 'clear' || cleanQuestion === 'reset' || cleanQuestion === 'cancella memoria' || cleanQuestion === 'dimentica tutto') {
-      chatHistory.reset(message.channel.id);
-      return message.reply("Memoria cancellata per questo canale. Di cosa stavamo parlando? Anzi, fa lo stesso, preferisco non saperlo.");
-    }
+      const cleanQuestion = question.toLowerCase();
+      if (cleanQuestion === 'clear' || cleanQuestion === 'reset' || cleanQuestion === 'cancella memoria' || cleanQuestion === 'dimentica tutto') {
+        chatHistory.reset(message.channel.id);
+        return message.reply("Memoria cancellata per questo canale. Di cosa stavamo parlando? Anzi, fa lo stesso, preferisco non saperlo.");
+      }
 
-    await message.channel.sendTyping();
+      await message.channel.sendTyping();
 
-    const creatorId = process.env.CREATOR_ID?.trim();
-    const systemPrompt = `${DEFAULT_IDENTITY}
+      const creatorId = process.env.CREATOR_ID?.trim();
+      const systemPrompt = `${DEFAULT_IDENTITY}
 
 INFORMAZIONI E STRUMENTI DISPONIBILI:
 - Puoi cercare sul web in tempo reale. Se la domanda richiede informazioni aggiornate o fatti non conosciuti, rispondi ESCLUSIVAMENTE con:
@@ -205,114 +223,122 @@ ISTRUZIONI NOMI E RUOLI DEGLI UTENTI:
   2. NON usare MAI le parole "Creatore", "Beta Tester", "[Creatore]" o "(Creatore)" come nome dell'utente. Non iniziare MAI la risposta dicendo "Creatore," o "[Creatore],".
   3. Se l'utente ha ruolo "Creatore del bot", trattalo come il tuo creatore (puoi essere sarcastico ma riconosci che è il tuo creatore).`;
 
-    const messages = [];
+      const messages = [];
 
-    const resetTime = chatHistory.getResetTimestamp(message.channel.id);
+      const resetTime = chatHistory.getResetTimestamp(message.channel.id);
 
-    let messagesArray = [];
-    try {
-      const fetched = await message.channel.messages.fetch({ limit: 15 });
-      messagesArray = Array.from(fetched.values()).reverse();
-    } catch (err) {
-      console.error("Errore nel recupero della cronologia del canale:", err);
-      messagesArray = [message];
-    }
-
-    for (const msg of messagesArray) {
-      if (msg.createdTimestamp < resetTime) {
-        continue;
+      let messagesArray = [];
+      try {
+        const fetched = await message.channel.messages.fetch({ limit: 15 });
+        messagesArray = Array.from(fetched.values()).reverse();
+      } catch (err) {
+        console.error("Errore nel recupero della cronologia del canale:", err);
+        messagesArray = [message];
       }
 
-      if (msg.author.bot && msg.author.id !== client.user.id) {
-        continue;
-      }
-
-      if (msg.author.id === client.user.id) {
-        messages.push({
-          role: 'assistant',
-          content: msg.content
-        });
-      } else {
-        const authorId = msg.author.id;
-        const displayName = msg.member?.displayName || msg.author.username;
-        let roleDescription = "Utente standard";
-        if (creatorId && authorId === creatorId) {
-          roleDescription = "Creatore del bot";
-        } else if (authorId === "763104377913212978") {
-          roleDescription = "Beta Tester del bot";
-        }
-
-        const botMentionRegExp = new RegExp(`<@!?${client.user.id}>`, 'g');
-        const cleanText = (msg.content || "").replace(botMentionRegExp, '').trim();
-
-        if (!cleanText && msg.attachments.size === 0 && msg.embeds.length === 0) {
+      for (const msg of messagesArray) {
+        if (msg.createdTimestamp < resetTime) {
           continue;
         }
 
-        let replyContext = "";
-        if (msg.reference && msg.reference.messageId) {
-          let refMsg = messagesArray.find(m => m.id === msg.reference.messageId);
-          if (!refMsg) {
-            try {
-              refMsg = await msg.channel.messages.fetch(msg.reference.messageId);
-            } catch (err) {
-              console.error("Errore nel recupero del messaggio referenziato:", err);
-            }
-          }
-          if (refMsg) {
-            const refAuthor = refMsg.member?.displayName || refMsg.author.username;
-            let refContent = refMsg.content || "";
-            if (!refContent && refMsg.attachments.size > 0) refContent = "[Allegato/Immagine]";
-            if (!refContent && refMsg.embeds.length > 0) refContent = "[Embed]";
-            if (refContent.length > 100) {
-              refContent = refContent.substring(0, 97) + "...";
-            }
-            replyContext = `[In risposta a @${refAuthor}: "${refContent}"] `;
-          }
+        if (msg.author.bot && msg.author.id !== client.user.id) {
+          continue;
         }
 
-        let msgText = cleanText;
-        if (!msgText) {
-          if (msg.attachments.size > 0) msgText = "[Allegato/Immagine]";
-          else if (msg.embeds.length > 0) msgText = "[Embed]";
+        if (msg.author.id === client.user.id) {
+          messages.push({
+            role: 'assistant',
+            content: msg.content
+          });
+        } else {
+          const authorId = msg.author.id;
+          const displayName = msg.member?.displayName || msg.author.username;
+          let roleDescription = "Utente standard";
+          if (creatorId && authorId === creatorId) {
+            roleDescription = "Creatore del bot";
+          } else if (authorId === "763104377913212978") {
+            roleDescription = "Beta Tester del bot";
+          }
+
+          const botMentionRegExp = new RegExp(`<@!?${client.user.id}>`, 'g');
+          const cleanText = (msg.content || "").replace(botMentionRegExp, '').trim();
+
+          if (!cleanText && msg.attachments.size === 0 && msg.embeds.length === 0) {
+            continue;
+          }
+
+          let replyContext = "";
+          if (msg.reference && msg.reference.messageId) {
+            let refMsg = messagesArray.find(m => m.id === msg.reference.messageId);
+            if (!refMsg) {
+              try {
+                refMsg = await msg.channel.messages.fetch(msg.reference.messageId);
+              } catch (err) {
+                console.error("Errore nel recupero del messaggio referenziato:", err);
+              }
+            }
+            if (refMsg) {
+              const refAuthor = refMsg.member?.displayName || refMsg.author.username;
+              let refContent = refMsg.content || "";
+              if (!refContent && refMsg.attachments.size > 0) refContent = "[Allegato/Immagine]";
+              if (!refContent && refMsg.embeds.length > 0) refContent = "[Embed]";
+              if (refContent.length > 100) {
+                refContent = refContent.substring(0, 97) + "...";
+              }
+              replyContext = `[In risposta a @${refAuthor}: "${refContent}"] `;
+            }
+          }
+
+          let msgText = cleanText;
+          if (!msgText) {
+            if (msg.attachments.size > 0) msgText = "[Allegato/Immagine]";
+            else if (msg.embeds.length > 0) msgText = "[Embed]";
+          }
+
+          messages.push({
+            role: 'user',
+            content: `${replyContext}[Utente: ${displayName} | Ruolo: ${roleDescription}]: ${msgText}`
+          });
         }
+      }
+
+      let reply = await getAIResponse(messages, systemPrompt);
+
+      const searchMatch = reply.match(/\[CERCA:\s*(.*?)\]/i);
+      if (searchMatch) {
+        const searchQuery = searchMatch[1].trim();
+        console.log(`[RuneAi] Ricerca richiesta per: "${searchQuery}"`);
+
+        const searchResults = await performWebSearch(searchQuery);
 
         messages.push({
-          role: 'user',
-          content: `${replyContext}[Utente: ${displayName} | Ruolo: ${roleDescription}]: ${msgText}`
+          role: 'assistant',
+          content: `Ricerco informazioni sul web per: "${searchQuery}".`
         });
-      }
-    }
 
-    let reply = await getAIResponse(messages, systemPrompt);
-
-    const searchMatch = reply.match(/\[CERCA:\s*(.*?)\]/i);
-    if (searchMatch) {
-      const searchQuery = searchMatch[1].trim();
-      console.log(`[RuneAi] Ricerca richiesta per: "${searchQuery}"`);
-
-      const searchResults = await performWebSearch(searchQuery);
-
-      messages.push({
-        role: 'assistant',
-        content: `Ricerco informazioni sul web per: "${searchQuery}".`
-      });
-
-      const finalSystemPrompt = `${systemPrompt}
+        const finalSystemPrompt = `${systemPrompt}
 
 RISULTATI RICERCA WEB PER "${searchQuery}":
 ${searchResults}
 
 ISTRUZIONE FINALE: Formula ORA la risposta finale all'utente basandoti su questi dati trovati sul web. Mantieni la tua personalità cinica e sarcastica. NON includere il tag [CERCA] nella tua risposta finale.`;
 
-      reply = await getAIResponse(messages, finalSystemPrompt);
-      reply = reply.replace(/\[CERCA:\s*.*?\]/gi, '').trim();
+        reply = await getAIResponse(messages, finalSystemPrompt);
+        reply = reply.replace(/\[CERCA:\s*.*?\]/gi, '').trim();
+      }
+
+      if (!reply || reply.trim().length === 0) {
+        reply = "Ho analizzato i dati ma l'elaborazione non ha prodotto un risultato valido. Riformula la richiesta.";
+      }
+
+      chatHistory.addLog(message.channel.id, 'user', `${message.author.username}: ${question}`);
+      chatHistory.addLog(message.channel.id, 'assistant', reply);
+
+      await message.reply(reply);
+    } catch (err) {
+      console.error("Errore durante l'elaborazione del messaggio:", err);
+      await message.reply("Ho riscontrato un errore improvviso durante l'elaborazione. Riprova tra poco.").catch(() => {});
     }
-
-    chatHistory.addLog(message.channel.id, 'user', `${message.author.username}: ${question}`);
-    chatHistory.addLog(message.channel.id, 'assistant', reply);
-
-    await message.reply(reply);
   }
 });
 
