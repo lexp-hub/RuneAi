@@ -41,9 +41,9 @@ async function generateAIImage(prompt) {
     }
 
     const imageModels = [
-      "@cf/black-forest-labs/flux-1-schnell",
       "@cf/bytedance/stable-diffusion-xl-lightning",
-      "@cf/stabilityai/stable-diffusion-xl-base-1.0"
+      "@cf/stabilityai/stable-diffusion-xl-base-1.0",
+      "@cf/black-forest-labs/flux-1-schnell"
     ];
 
     for (const model of imageModels) {
@@ -61,11 +61,31 @@ async function generateAIImage(prompt) {
         );
 
         if (response.ok) {
-          const arrayBuffer = await response.arrayBuffer();
-          return Buffer.from(arrayBuffer);
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            const json = await response.json();
+            const base64Str = json?.result?.image || json?.result;
+            if (base64Str && typeof base64Str === 'string') {
+              return Buffer.from(base64Str, 'base64');
+            }
+          } else {
+            const arrayBuffer = await response.arrayBuffer();
+            const buf = Buffer.from(arrayBuffer);
+            if (buf.length > 0 && buf[0] === 123) {
+              try {
+                const parsed = JSON.parse(buf.toString('utf-8'));
+                const b64 = parsed?.result?.image || parsed?.result;
+                if (b64 && typeof b64 === 'string') return Buffer.from(b64, 'base64');
+              } catch (e) {}
+            }
+            return buf;
+          }
+        } else {
+          const errBody = await response.text();
+          console.warn(`[RuneAi] Cloudflare AI Modello ${model} HTTP ${response.status}:`, errBody);
         }
       } catch (e) {
-        console.warn(`[RuneAi] Errore modello immagine ${model}, provo fallback...`);
+        console.warn(`[RuneAi] Errore modello immagine ${model}:`, e);
       }
     }
     throw new Error("Impossibile generare l'immagine con i modelli Cloudflare disponibili.");
