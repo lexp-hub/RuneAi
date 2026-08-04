@@ -103,22 +103,29 @@ export function startDashboard(client, chatHistory, onConfigUpdate) {
         return res.json([]);
       }
       const files = fs.readdirSync(historyDir).filter(f => f.endsWith('.json'));
-      const channels = files.map(file => {
-        const filePath = path.join(historyDir, file);
-        const stats = fs.statSync(filePath);
-        const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-        const channelId = file.replace('.json', '');
-        return {
-          channelId,
-          lastUpdated: stats.mtime,
-          messageCount: data.logs ? data.logs.length : 0,
-          resetTimestamp: data.resetTimestamp || 0
-        };
-      });
+      const channels = [];
+      for (const file of files) {
+        try {
+          const filePath = path.join(historyDir, file);
+          const stats = fs.statSync(filePath);
+          const raw = fs.readFileSync(filePath, 'utf-8');
+          if (!raw.trim()) continue;
+          const data = JSON.parse(raw);
+          const channelId = file.replace('.json', '');
+          channels.push({
+            channelId,
+            lastUpdated: stats.mtime,
+            messageCount: Array.isArray(data.logs) ? data.logs.length : 0,
+            resetTimestamp: data.resetTimestamp || 0
+          });
+        } catch (e) {
+          console.warn(`[Dashboard] Impossibile leggere il file cronologia ${file}:`, e);
+        }
+      }
       res.json(channels);
     } catch (err) {
       console.error('Errore recupero lista canali:', err);
-      res.status(500).json({ error: 'Errore nel recupero dei canali' });
+      res.json([]);
     }
   });
 

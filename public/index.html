@@ -856,9 +856,10 @@
         const res = await fetch(`${backendUrl || window.location.origin}/api/history`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
+        if (!res.ok) return;
         const channels = await res.json();
         
-        if (channels.length === 0) {
+        if (!Array.isArray(channels) || channels.length === 0) {
           container.innerHTML = '<p style="font-size: 13px; color: var(--text-muted); text-align: center; padding: 20px;">Nessun canale registrato in memoria.</p>';
           return;
         }
