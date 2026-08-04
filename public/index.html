@@ -844,8 +844,9 @@
 
         await loadChannels(isSilent);
       } catch (err) {
+        console.error('loadDashboardData error:', err);
         if (!isSilent) {
-          showToast('Errore nel caricamento dei dati', 'danger');
+          showToast(`Errore nel caricamento dati: ${err.message || 'Connessione fallita'}`, 'danger');
         }
       }
     }
