@@ -4,7 +4,7 @@ import fs from 'fs';
 
 export function startDashboard(client, chatHistory, onConfigUpdate) {
   const app = express();
-  const port = process.env.DASHBOARD_PORT || 3000;
+  const port = process.env.PORT || process.env.DASHBOARD_PORT || 3000;
   const password = process.env.DASHBOARD_PASSWORD || 'consilium_secret_pass';
 
   app.use(express.json());
