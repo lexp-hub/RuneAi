@@ -156,45 +156,36 @@ INFORMAZIONI E STRUMENTI DISPONIBILI:
 
 RUOLI DEGLI UTENTI:
 - Gli utenti con il tag "[Creatore]" di fianco al nome sono i tuoi creatori (lexproj). Riconoscili come tali nelle tue risposte (puoi essere comunque sarcastico ma con affetto, rispetto speciale o ironica riverenza).
-- Gli utenti con il tag "[Beta Tester]" di fianco al nome sono i tuoi beta tester. Riconoscili come tali e prendili in giro per i bug che devono testare.`;
+- Gli utenti with il tag "[Beta Tester]" di fianco al nome sono i tuoi beta tester. Riconoscili come tali e prendili in giro per i bug che devono testare.`;
 
     const messages = [];
 
-    // Recupera la data dell'ultimo reset per questo canale
     const resetTime = chatHistory.getResetTimestamp(message.channel.id);
 
-    // Recupera gli ultimi 15 messaggi del canale per ricostruire il contesto
     let messagesArray = [];
     try {
       const fetched = await message.channel.messages.fetch({ limit: 15 });
-      // Inverti per avere l'ordine cronologico (dal più vecchio al più recente)
       messagesArray = Array.from(fetched.values()).reverse();
     } catch (err) {
       console.error("Errore nel recupero della cronologia del canale:", err);
-      // Fallback sul solo messaggio corrente in caso di errore
       messagesArray = [message];
     }
 
-    // Mappa i messaggi del canale per l'AI
     for (const msg of messagesArray) {
-      // Salta i messaggi inviati prima del reset della memoria
       if (msg.createdTimestamp < resetTime) {
         continue;
       }
 
-      // Ignora i messaggi degli altri bot
       if (msg.author.bot && msg.author.id !== client.user.id) {
         continue;
       }
 
       if (msg.author.id === client.user.id) {
-        // Messaggio del bot stesso (risposta dell'assistente)
         messages.push({
           role: 'assistant',
           content: msg.content
         });
       } else {
-        // Messaggio di un utente
         const authorId = msg.author.id;
         let roleTag = "";
         if (creatorId && authorId === creatorId) {
@@ -207,12 +198,10 @@ RUOLI DEGLI UTENTI:
         const botMentionRegExp = new RegExp(`<@!?${client.user.id}>`, 'g');
         const cleanText = (msg.content || "").replace(botMentionRegExp, '').trim();
 
-        // Se il messaggio è vuoto (es. solo tag senza testo) e non ha allegati, lo saltiamo
         if (!cleanText && msg.attachments.size === 0 && msg.embeds.length === 0) {
           continue;
         }
 
-        // Risoluzione dell'eventuale messaggio di risposta (reply)
         let replyContext = "";
         if (msg.reference && msg.reference.messageId) {
           let refMsg = messagesArray.find(m => m.id === msg.reference.messageId);
@@ -250,7 +239,6 @@ RUOLI DEGLI UTENTI:
 
     let reply = await getAIResponse(messages, systemPrompt);
 
-    // Gestione del loop di ricerca ReAct
     const searchMatch = reply.match(/\[CERCA:\s*(.*?)\]/i);
     if (searchMatch) {
       const searchQuery = searchMatch[1].trim();
@@ -270,7 +258,6 @@ RUOLI DEGLI UTENTI:
       reply = await getAIResponse(messages, systemPrompt);
     }
 
-    // Salva l'interazione corrente nella cronologia locale (come log di archivio)
     chatHistory.addLog(message.channel.id, 'user', `${message.author.username}: ${question}`);
     chatHistory.addLog(message.channel.id, 'assistant', reply);
 
@@ -286,5 +273,4 @@ if (!token) {
 
 client.login(token);
 
-// Avvia la dashboard di amministrazione
 startDashboard(client, chatHistory, loadPrompt);

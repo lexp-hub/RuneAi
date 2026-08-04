@@ -9,7 +9,6 @@ export function startDashboard(client, chatHistory, onConfigUpdate) {
 
   app.use(express.json());
 
-  // Middleware CORS nativo per consentire chiamate cross-origin (es. da Cloudflare Pages)
   app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
@@ -22,7 +21,6 @@ export function startDashboard(client, chatHistory, onConfigUpdate) {
 
   app.use(express.static('public'));
 
-  // Middleware di autenticazione stateless semplice
   const authenticate = (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || authHeader !== `Bearer ${password}`) {
@@ -31,7 +29,6 @@ export function startDashboard(client, chatHistory, onConfigUpdate) {
     next();
   };
 
-  // Endpoint di Login
   app.post('/api/login', (req, res) => {
     const { pass } = req.body;
     if (pass === password) {
@@ -41,7 +38,6 @@ export function startDashboard(client, chatHistory, onConfigUpdate) {
     }
   });
 
-  // Endpoint di Stato del Bot
   app.get('/api/status', authenticate, (req, res) => {
     res.json({
       botTag: client.user ? client.user.tag : 'Non connesso',
@@ -55,7 +51,6 @@ export function startDashboard(client, chatHistory, onConfigUpdate) {
     });
   });
 
-  // Endpoint Configurazione (Identity e Modello)
   app.get('/api/config', authenticate, (req, res) => {
     let baseIdentity = '';
     try {
@@ -74,16 +69,13 @@ export function startDashboard(client, chatHistory, onConfigUpdate) {
     const { baseIdentity, cloudflareModel } = req.body;
 
     try {
-      // Aggiorna prompt.json
       if (baseIdentity !== undefined) {
         fs.writeFileSync('./prompt.json', JSON.stringify({ baseIdentity }, null, 2), 'utf-8');
       }
 
-      // Aggiorna in memoria ed env
       if (cloudflareModel !== undefined) {
         process.env.CLOUDFLARE_MODEL = cloudflareModel;
         
-        // Aggiorna file .env
         let envContent = fs.readFileSync('.env', 'utf-8');
         if (envContent.includes('CLOUDFLARE_MODEL=')) {
           envContent = envContent.replace(/CLOUDFLARE_MODEL=.*/, `CLOUDFLARE_MODEL=${cloudflareModel}`);
@@ -93,7 +85,6 @@ export function startDashboard(client, chatHistory, onConfigUpdate) {
         fs.writeFileSync('.env', envContent, 'utf-8');
       }
 
-      // Esegui la callback per ricaricare istantaneamente la configurazione
       if (onConfigUpdate) {
         onConfigUpdate();
       }
@@ -105,7 +96,6 @@ export function startDashboard(client, chatHistory, onConfigUpdate) {
     }
   });
 
-  // Endpoint Cronologia Canali
   app.get('/api/history', authenticate, (req, res) => {
     const historyDir = chatHistory.historyDir || './history';
     try {

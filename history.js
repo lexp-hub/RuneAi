@@ -6,7 +6,6 @@ export class ChatHistoryManager {
     this.historyDir = historyDir;
     this.maxHistory = maxHistory;
 
-    // Crea la cartella se non esiste
     if (!fs.existsSync(this.historyDir)) {
       fs.mkdirSync(this.historyDir, { recursive: true });
     }
@@ -51,7 +50,6 @@ export class ChatHistoryManager {
     if (!data.logs) data.logs = [];
     data.logs.push({ role, content, timestamp: Date.now() });
 
-    // Mantieni solo gli ultimi maxHistory log
     if (data.logs.length > this.maxHistory) {
       data.logs.splice(0, data.logs.length - this.maxHistory);
     }
@@ -62,7 +60,7 @@ export class ChatHistoryManager {
   reset(channelId) {
     const data = this._readData(channelId);
     data.resetTimestamp = Date.now();
-    data.logs = []; // Pulisce i log correnti
+    data.logs = [];
     this._writeData(channelId, data);
   }
 }
