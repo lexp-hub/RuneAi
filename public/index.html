@@ -784,6 +784,19 @@
       }
     }
 
+    function resetBackendUrl() {
+      localStorage.removeItem('runeai_backend_url');
+      localStorage.removeItem('runeai_token');
+      token = '';
+      backendUrl = '';
+      document.getElementById('backend-url').value = '';
+      document.getElementById('password').value = '';
+      document.getElementById('login-screen').style.display = 'flex';
+      document.getElementById('dashboard-screen').style.display = 'none';
+      stopStatsPolling();
+      showToast('URL del backend resettato. Inserisci l\'URL corretto con la porta.', 'success');
+    }
+
     async function checkAuthAndLoad() {
       try {
         const status = await safeFetchJson('/api/status', {
@@ -797,6 +810,9 @@
         }
       } catch (err) {
         showToast(`Connessione fallita: ${err.message}`, 'danger');
+        localStorage.removeItem('runeai_backend_url');
+        backendUrl = '';
+        document.getElementById('backend-url').value = '';
         document.getElementById('login-screen').style.display = 'flex';
         document.getElementById('dashboard-screen').style.display = 'none';
         stopStatsPolling();
