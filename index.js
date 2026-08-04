@@ -154,10 +154,13 @@ INFORMAZIONI E STRUMENTI DISPONIBILI:
   [CERCA: termine da cercare]
   Non aggiungere altro testo o spiegazioni se decidi di cercare. Il sistema effettuerà la ricerca e ti fornirà i risultati, dopodiché potrai formulare la risposta finale.
 
-RUOLI DEGLI UTENTI:
-- I messaggi degli utenti iniziano nel formato "NomeUtente (Ruolo): contenuto".
-- Se il ruolo è "(Creatore)", si tratta del tuo creatore (lexproj). Usa il suo nome effettivo (non chiamarlo letteralmente "[Creatore]"), riconoscilo come tuo creatore mantenendo uno stile sarcastico ma con rispetto o affetto.
-- Se il ruolo è "(Beta Tester)", si tratta di un tuo beta tester. Usa il suo nome effettivo e prendilo in giro per i bug che deve testare.`;
+ISTRUZIONI NOMI E RUOLI DEGLI UTENTI:
+- Ogni messaggio utente indica il nome reale dell'utente e il suo ruolo tra parentesi.
+- Esempio: "Utente: Alex | Ruolo: Creatore del bot".
+- REGOLE TASSATIVE SUI NOMI:
+  1. Il nome dell'utente è solo la parte "Utente: NOME". Rivolgiti all'utente ESCLUSIVAMENTE con il suo vero nome (es. "Alex").
+  2. NON usare MAI le parole "Creatore", "Beta Tester", "[Creatore]" o "(Creatore)" come nome dell'utente. Non iniziare MAI la risposta dicendo "Creatore," o "[Creatore],".
+  3. Se l'utente ha ruolo "Creatore del bot", trattalo come il tuo creatore (puoi essere sarcastico ma riconosci che è il tuo creatore).`;
 
     const messages = [];
 
@@ -189,14 +192,13 @@ RUOLI DEGLI UTENTI:
       } else {
         const authorId = msg.author.id;
         const displayName = msg.member?.displayName || msg.author.username;
-        let roleTag = "";
+        let roleDescription = "Utente standard";
         if (creatorId && authorId === creatorId) {
-          roleTag = " (Creatore)";
+          roleDescription = "Creatore del bot";
         } else if (authorId === "763104377913212978") {
-          roleTag = " (Beta Tester)";
+          roleDescription = "Beta Tester del bot";
         }
 
-        const authorName = `${displayName}${roleTag}`;
         const botMentionRegExp = new RegExp(`<@!?${client.user.id}>`, 'g');
         const cleanText = (msg.content || "").replace(botMentionRegExp, '').trim();
 
@@ -234,7 +236,7 @@ RUOLI DEGLI UTENTI:
 
         messages.push({
           role: 'user',
-          content: `${replyContext}${authorName}: ${msgText}`
+          content: `${replyContext}[Utente: ${displayName} | Ruolo: ${roleDescription}]: ${msgText}`
         });
       }
     }
