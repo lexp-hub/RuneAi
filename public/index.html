@@ -7,15 +7,16 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-color: #0b0f19;
-      --panel-bg: rgba(17, 25, 40, 0.6);
-      --panel-border: rgba(255, 255, 255, 0.08);
-      --text-color: #f3f4f6;
-      --text-muted: #9ca3af;
-      --accent-color: #8b5cf6; /* Violet */
-      --accent-glow: rgba(139, 92, 246, 0.4);
-      --success-color: #10b981; /* Emerald */
-      --danger-color: #ef4444; /* Rose */
+      --bg-color: #060d10;
+      --panel-bg: rgba(12, 25, 30, 0.7);
+      --panel-border: rgba(45, 212, 191, 0.2);
+      --text-color: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-color: #2dd4bf; /* Banner Teal/Cyan */
+      --accent-hover: #14b8a6;
+      --accent-glow: rgba(45, 212, 191, 0.4);
+      --success-color: #10b981;
+      --danger-color: #f43f5e;
     }
 
     * {
@@ -31,8 +32,9 @@
       min-height: 100vh;
       overflow-x: hidden;
       background-image: 
-        radial-gradient(at 10% 20%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
-        radial-gradient(at 90% 80%, rgba(139, 92, 246, 0.15) 0px, transparent 50%);
+        radial-gradient(at 10% 15%, rgba(20, 184, 166, 0.18) 0px, transparent 50%),
+        radial-gradient(at 90% 85%, rgba(13, 148, 136, 0.22) 0px, transparent 55%),
+        radial-gradient(at 50% 50%, rgba(6, 78, 96, 0.15) 0px, transparent 70%);
       background-attachment: fixed;
     }
 
@@ -96,7 +98,26 @@
       margin-bottom: 12px;
       display: inline-block;
       animation: pulse 2.5s infinite;
-      filter: invert(1) drop-shadow(0 0 8px rgba(167, 139, 250, 0.6));
+      filter: drop-shadow(0 0 10px rgba(45, 212, 191, 0.6)) invert(1);
+    }
+
+    .banner-container {
+      width: 100%;
+      height: 140px;
+      border-radius: 16px;
+      overflow: hidden;
+      margin-bottom: 24px;
+      border: 1px solid var(--panel-border);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+      position: relative;
+    }
+
+    .banner-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      display: block;
     }
 
     h1 {
@@ -531,9 +552,12 @@
 
   <!-- Schermata Principale della Dashboard -->
   <div id="dashboard-screen">
+    <div class="banner-container">
+      <img src="banner.png" alt="RuneAi Banner" class="banner-img">
+    </div>
     <header>
       <div class="bot-info">
-        <img src="logo.png" alt="RuneAi Logo" style="width: 32px; height: 32px; object-fit: contain; filter: invert(1) drop-shadow(0 0 4px rgba(167, 139, 250, 0.6)); margin-right: 12px;">
+        <img src="logo.png" alt="RuneAi Logo" style="width: 32px; height: 32px; object-fit: contain; filter: invert(1) drop-shadow(0 0 6px rgba(45, 212, 191, 0.6)); margin-right: 12px;">
         <div class="status-dot" id="header-status-dot"></div>
         <div>
           <h1 style="font-size: 20px;">RuneAi</h1>
@@ -630,6 +654,7 @@
   <script>
     let token = localStorage.getItem('runeai_token') || '';
     let backendUrl = localStorage.getItem('runeai_backend_url') || '';
+    let statsInterval = null;
 
     // Mostra un popup temporaneo (Toast)
     function showToast(message, type = 'success') {
@@ -650,6 +675,23 @@
     // Loader helper
     function showLoader() { document.getElementById('loader').style.display = 'flex'; }
     function hideLoader() { document.getElementById('loader').style.display = 'none'; }
+
+    // Polling per aggiornamento statistiche in tempo reale (senza ricaricare la pagina)
+    function startStatsPolling() {
+      if (statsInterval) clearInterval(statsInterval);
+      statsInterval = setInterval(() => {
+        if (token) {
+          loadDashboardData(true); // silent refresh
+        }
+      }, 3000); // ogni 3 secondi
+    }
+
+    function stopStatsPolling() {
+      if (statsInterval) {
+        clearInterval(statsInterval);
+        statsInterval = null;
+      }
+    }
 
     // Init App
     window.addEventListener('DOMContentLoaded', () => {
@@ -685,7 +727,8 @@
             localStorage.setItem('runeai_token', token);
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('dashboard-screen').style.display = 'block';
-            await loadDashboardData();
+            await loadDashboardData(false);
+            startStatsPolling();
             showToast('Accesso effettuato con successo!');
           } else {
             showToast(data.error || 'Password non valida', 'danger');
@@ -715,7 +758,7 @@
           });
           if (res.ok) {
             showToast('Configurazione salvata ed applicata!');
-            await loadDashboardData();
+            await loadDashboardData(true);
           } else {
             const data = await res.json();
             showToast(data.error || 'Errore nel salvataggio', 'danger');
@@ -736,22 +779,25 @@
         if (res.ok) {
           document.getElementById('login-screen').style.display = 'none';
           document.getElementById('dashboard-screen').style.display = 'block';
-          await loadDashboardData();
+          await loadDashboardData(false);
+          startStatsPolling();
         } else {
           localStorage.removeItem('runeai_token');
           token = '';
           document.getElementById('login-screen').style.display = 'flex';
           document.getElementById('dashboard-screen').style.display = 'none';
+          stopStatsPolling();
         }
       } catch (err) {
         showToast('Impossibile connettersi al backend', 'danger');
         document.getElementById('login-screen').style.display = 'flex';
+        stopStatsPolling();
       } finally {
         hideLoader();
       }
     }
 
-    async function loadDashboardData() {
+    async function loadDashboardData(isSilent = false) {
       try {
         // Carica stato
         const statusRes = await fetch(`${backendUrl || window.location.origin}/api/status`, {
@@ -782,22 +828,30 @@
         document.getElementById('stat-uptime').textContent = `${h}h ${m}m ${s}s`;
         document.getElementById('stat-ram').textContent = status.memoryUsage;
 
-        // Carica configurazione
-        const configRes = await fetch(`${backendUrl || window.location.origin}/api/config`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const config = await configRes.json();
-        document.getElementById('config-identity').value = config.baseIdentity;
-        document.getElementById('config-model').value = config.cloudflareModel;
+        // Se non è silenziato, aggiorna anche il form della personalità (evitando di sovrascrivere se l'utente sta digitando)
+        if (!isSilent) {
+          const configRes = await fetch(`${backendUrl || window.location.origin}/api/config`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const config = await configRes.json();
+          if (document.activeElement !== document.getElementById('config-identity')) {
+            document.getElementById('config-identity').value = config.baseIdentity;
+          }
+          if (document.activeElement !== document.getElementById('config-model')) {
+            document.getElementById('config-model').value = config.cloudflareModel;
+          }
+        }
 
         // Carica canali
-        await loadChannels();
+        await loadChannels(isSilent);
       } catch (err) {
-        showToast('Errore nel caricamento dei dati', 'danger');
+        if (!isSilent) {
+          showToast('Errore nel caricamento dei dati', 'danger');
+        }
       }
     }
 
-    async function loadChannels() {
+    async function loadChannels(isSilent = false) {
       const container = document.getElementById('channel-list-container');
       try {
         const res = await fetch(`${backendUrl || window.location.origin}/api/history`, {
@@ -831,7 +885,7 @@
           container.appendChild(item);
         });
       } catch (err) {
-        showToast('Errore nel caricamento dei canali', 'danger');
+        if (!isSilent) showToast('Errore nel caricamento dei canali', 'danger');
       }
     }
 
@@ -901,7 +955,7 @@
         });
         if (res.ok) {
           showToast('Memoria del canale azzerata!');
-          await loadChannels();
+          await loadChannels(false);
         } else {
           showToast('Errore durante l\'azzeramento della memoria', 'danger');
         }
@@ -913,6 +967,7 @@
     }
 
     function logout() {
+      stopStatsPolling();
       localStorage.removeItem('runeai_token');
       token = '';
       document.getElementById('login-screen').style.display = 'flex';
