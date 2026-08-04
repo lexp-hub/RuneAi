@@ -98,37 +98,74 @@ async function generateAIImage(prompt) {
 
 async function getAIResponse(messages, systemPrompt = DEFAULT_IDENTITY) {
   try {
-    const accountId = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
-    const apiToken = process.env.CLOUDFLARE_API_TOKEN?.trim();
-
-    if (!accountId || !apiToken) {
-      throw new Error("Credenziali Cloudflare mancanti in .env (CLOUDFLARE_ACCOUNT_ID o CLOUDFLARE_API_TOKEN)");
-    }
-
     const model = process.env.CLOUDFLARE_MODEL?.trim() || "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
-    const response = await fetch(
-      `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          messages: [{ role: 'system', content: systemPrompt }, ...messages]
-        }),
+
+    let reply = "";
+
+    if (model.startsWith('gemini-')) {
+      const geminiApiKey = process.env.GEMINI_API_KEY?.trim();
+      if (!geminiApiKey) {
+        throw new Error("GEMINI_API_KEY non trovata nel file .env per usare il modello Gemini");
       }
-    );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Cloudflare AI Error:', errorText);
-      throw new Error(`Cloudflare API Error: ${response.statusText}`);
+      const contents = messages.map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }]
+      }));
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: systemPrompt }] },
+            contents: contents
+          })
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Gemini API Error:', errorText);
+        throw new Error(`Gemini API Error: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      reply = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!reply) throw new Error("Risposta vuota da Gemini API");
+    } else {
+      const accountId = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
+      const apiToken = process.env.CLOUDFLARE_API_TOKEN?.trim();
+
+      if (!accountId || !apiToken) {
+        throw new Error("Credenziali Cloudflare mancanti in .env (CLOUDFLARE_ACCOUNT_ID o CLOUDFLARE_API_TOKEN)");
+      }
+
+      const response = await fetch(
+        `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            messages: [{ role: 'system', content: systemPrompt }, ...messages]
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Cloudflare AI Error:', errorText);
+        throw new Error(`Cloudflare API Error: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      reply = result?.result?.response;
+      if (!reply) throw new Error("Risposta vuota dall'IA");
     }
-
-    const result = await response.json();
-    const reply = result?.result?.response;
-    if (!reply) throw new Error("Risposta vuota dall'IA");
 
     const lastUserMessage = messages[messages.length - 1]?.content?.toLowerCase() || "";
     const wantsDetail = lastUserMessage.includes("approfondi") ||
