@@ -69,18 +69,19 @@ export function startDashboard(client, chatHistory, onConfigUpdate) {
     const { baseIdentity, cloudflareModel } = req.body;
 
     try {
-      if (baseIdentity !== undefined) {
-        fs.writeFileSync('./prompt.json', JSON.stringify({ baseIdentity }, null, 2), 'utf-8');
+      if (baseIdentity !== undefined && typeof baseIdentity === 'string' && baseIdentity.trim().length > 0) {
+        fs.writeFileSync('./prompt.json', JSON.stringify({ baseIdentity: baseIdentity.trim() }, null, 2), 'utf-8');
       }
 
-      if (cloudflareModel !== undefined) {
-        process.env.CLOUDFLARE_MODEL = cloudflareModel;
+      if (cloudflareModel !== undefined && typeof cloudflareModel === 'string' && cloudflareModel.trim().length > 0) {
+        const cleanModel = cloudflareModel.trim();
+        process.env.CLOUDFLARE_MODEL = cleanModel;
         
-        let envContent = fs.readFileSync('.env', 'utf-8');
+        let envContent = fs.existsSync('.env') ? fs.readFileSync('.env', 'utf-8') : '';
         if (envContent.includes('CLOUDFLARE_MODEL=')) {
-          envContent = envContent.replace(/CLOUDFLARE_MODEL=.*/, `CLOUDFLARE_MODEL=${cloudflareModel}`);
+          envContent = envContent.replace(/CLOUDFLARE_MODEL=.*/, `CLOUDFLARE_MODEL=${cleanModel}`);
         } else {
-          envContent += `\nCLOUDFLARE_MODEL=${cloudflareModel}`;
+          envContent += `\nCLOUDFLARE_MODEL=${cleanModel}`;
         }
         fs.writeFileSync('.env', envContent, 'utf-8');
       }
