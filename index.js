@@ -295,14 +295,18 @@ ISTRUZIONI NOMI E RUOLI DEGLI UTENTI:
 
       messages.push({
         role: 'assistant',
-        content: `[CERCA: ${searchQuery}]`
-      });
-      messages.push({
-        role: 'system',
-        content: `Risultati della ricerca web per "${searchQuery}":\n\n${searchResults}\n\nUsa questi risultati per formulare la risposta finale mantenendo lo stile e la personalità originali.`
+        content: `Ricerco informazioni sul web per: "${searchQuery}".`
       });
 
-      reply = await getAIResponse(messages, systemPrompt);
+      const finalSystemPrompt = `${systemPrompt}
+
+RISULTATI RICERCA WEB PER "${searchQuery}":
+${searchResults}
+
+ISTRUZIONE FINALE: Formula ORA la risposta finale all'utente basandoti su questi dati trovati sul web. Mantieni la tua personalità cinica e sarcastica. NON includere il tag [CERCA] nella tua risposta finale.`;
+
+      reply = await getAIResponse(messages, finalSystemPrompt);
+      reply = reply.replace(/\[CERCA:\s*.*?\]/gi, '').trim();
     }
 
     chatHistory.addLog(message.channel.id, 'user', `${message.author.username}: ${question}`);
