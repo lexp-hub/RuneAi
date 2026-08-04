@@ -7,14 +7,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-color: #050507;
-      --panel-bg: rgba(16, 16, 20, 0.75);
-      --panel-border: rgba(255, 255, 255, 0.12);
+      --bg-color: #060d10;
+      --panel-bg: rgba(12, 25, 30, 0.7);
+      --panel-border: rgba(45, 212, 191, 0.2);
       --text-color: #f8fafc;
       --text-muted: #94a3b8;
-      --accent-color: #ffffff; /* Obsidian Crisp White */
-      --accent-hover: #e2e8f0;
-      --accent-glow: rgba(255, 255, 255, 0.35);
+      --accent-color: #2dd4bf; /* Banner Teal/Cyan */
+      --accent-hover: #14b8a6;
+      --accent-glow: rgba(45, 212, 191, 0.4);
       --success-color: #10b981;
       --danger-color: #f43f5e;
     }
@@ -32,9 +32,9 @@
       min-height: 100vh;
       overflow-x: hidden;
       background-image: 
-        radial-gradient(at 10% 15%, rgba(255, 255, 255, 0.05) 0px, transparent 50%),
-        radial-gradient(at 90% 85%, rgba(255, 255, 255, 0.04) 0px, transparent 55%),
-        radial-gradient(at 50% 50%, rgba(30, 30, 35, 0.3) 0px, transparent 70%);
+        radial-gradient(at 10% 15%, rgba(20, 184, 166, 0.18) 0px, transparent 50%),
+        radial-gradient(at 90% 85%, rgba(13, 148, 136, 0.22) 0px, transparent 55%),
+        radial-gradient(at 50% 50%, rgba(6, 78, 96, 0.15) 0px, transparent 70%);
       background-attachment: fixed;
     }
 
@@ -92,13 +92,13 @@
     }
 
     .logo-img {
-      width: 72px;
-      height: 72px;
+      width: 88px;
+      height: 88px;
       object-fit: contain;
       margin-bottom: 12px;
       display: inline-block;
       animation: pulse 2.5s infinite;
-      filter: drop-shadow(0 0 10px rgba(45, 212, 191, 0.6)) invert(1);
+      filter: brightness(0) invert(1) drop-shadow(0 0 12px rgba(255, 255, 255, 0.9));
     }
 
     .banner-container {
@@ -557,7 +557,7 @@
     </div>
     <header>
       <div class="bot-info">
-        <img src="logo.png" alt="RuneAi Logo" style="width: 32px; height: 32px; object-fit: contain; filter: invert(1) drop-shadow(0 0 6px rgba(45, 212, 191, 0.6)); margin-right: 12px;">
+        <img src="logo.png" alt="RuneAi Logo" style="width: 44px; height: 44px; object-fit: contain; filter: brightness(0) invert(1) drop-shadow(0 0 8px rgba(255, 255, 255, 0.9)); margin-right: 12px;">
         <div class="status-dot" id="header-status-dot"></div>
         <div>
           <h1 style="font-size: 20px;">RuneAi</h1>
