@@ -316,12 +316,14 @@ ISTRUZIONI NOMI E RUOLI DEGLI UTENTI:
           content: `Ricerco informazioni sul web per: "${searchQuery}".`
         });
 
-        const finalSystemPrompt = `${systemPrompt}
+        const finalSystemPrompt = `${DEFAULT_IDENTITY}
 
-RISULTATI RICERCA WEB PER "${searchQuery}":
+ISTRUZIONI PER LA RISPOSTA FINALE:
+Hai appena eseguito la ricerca web per l'utente. Ecco i dati aggiornati trovati sul web per "${searchQuery}":
+
 ${searchResults}
 
-ISTRUZIONE FINALE: Formula ORA la risposta finale all'utente basandoti su questi dati trovati sul web. Mantieni la tua personalità cinica e sarcastica. NON includere il tag [CERCA] nella tua risposta finale.`;
+Utilizza questi dati per rispondere direttamente all'utente. Esprimi la tua opinione cinica, spietata e sarcastica basandoti sui fatti riportati qui sopra. Rispondi in italiano in modo sintetico (massimo 300 caratteri). NON usare comandi o tag di ricerca nella risposta.`;
 
         reply = await getAIResponse(messages, finalSystemPrompt);
         reply = reply.replace(/\[CERCA:\s*.*?\]/gi, '').trim();
