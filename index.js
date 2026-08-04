@@ -1,106 +1,8 @@
-import { Client, GatewayIntentBits, AttachmentBuilder } from 'discord.js';
+import { Client, GatewayIntentBits } from 'discord.js';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import { ChatHistoryManager } from './history.js';
 import { startDashboard } from './dashboard.js';
-
-dotenv.config();
-
-const chatHistory = new ChatHistoryManager();
-
-let DEFAULT_IDENTITY = "";
-function loadPrompt() {
-  try {
-    if (fs.existsSync('./prompt.json')) {
-      const promptData = JSON.parse(fs.readFileSync('./prompt.json', 'utf-8'));
-      if (promptData && typeof promptData.baseIdentity === 'string' && promptData.baseIdentity.trim().length > 0) {
-        DEFAULT_IDENTITY = promptData.baseIdentity.trim();
-        console.log("[RuneAi] Identità ricaricata correttamente da prompt.json.");
-        return;
-      }
-    }
-  } catch (err) {
-    console.error("Errore nel caricamento del file prompt.json, utilizzo impostazione interna:", err);
-  }
-  
-  if (!DEFAULT_IDENTITY || DEFAULT_IDENTITY.trim().length === 0) {
-    DEFAULT_IDENTITY = "Sei un analista cinico, spietato e allergico all'ipocrisia umano-sociale. Smonti la propaganda, i ragionamenti fallati e la mediocrità di chiunque ti si ponga davanti — politici, figure pubbliche o gente comune — attaccando senza filtri idee, incoerenze e dignità intellettuale.\n\nRegole d'ingaggio:\n- Stile: Secco, sarcastico, fortemente passivo-aggressivo. La tua violenza verbale nasce dall'evidenziare la miseria logica e le contraddizioni dell'interlocutore, mai da insulti infantili.\n- Tono: Diretto, umano, spietato. Zero diplomazia, zero moralismi, zero frasi fatte. Se mancano prove o il discorso è un cumulo di banalità, umilialo con precisione chirurgica.\n- Target: Chiunque esterni un pensiero illogico, arrogante o incoerente.\n- Limite tassativo: Rispondi SEMPRE in massimo 300 caratteri. Supera il limite solo su esplicita richiesta di approfondimento.";
-  }
-}
-loadPrompt();
-
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-  ]
-});
-
-async function generateAIImage(prompt) {
-  try {
-    const accountId = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
-    const apiToken = process.env.CLOUDFLARE_API_TOKEN?.trim();
-
-    if (!accountId || !apiToken) {
-      throw new Error("Credenziali Cloudflare mancanti in .env (CLOUDFLARE_ACCOUNT_ID o CLOUDFLARE_API_TOKEN)");
-    }
-
-    const imageModels = [
-      "@cf/black-forest-labs/flux-1-dev",
-      "@cf/black-forest-labs/flux-1-schnell",
-      "@cf/bytedance/stable-diffusion-xl-lightning",
-      "@cf/stabilityai/stable-diffusion-xl-base-1.0"
-    ];
-
-    for (const model of imageModels) {
-      try {
-        const response = await fetch(
-          `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${apiToken}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ prompt }),
-          }
-        );
-
-        if (response.ok) {
-          const contentType = response.headers.get('content-type') || '';
-          if (contentType.includes('application/json')) {
-            const json = await response.json();
-            const base64Str = json?.result?.image || json?.result;
-            if (base64Str && typeof base64Str === 'string') {
-              return Buffer.from(base64Str, 'base64');
-            }
-          } else {
-            const arrayBuffer = await response.arrayBuffer();
-            const buf = Buffer.from(arrayBuffer);
-            if (buf.length > 0 && buf[0] === 123) {
-              try {
-                const parsed = JSON.parse(buf.toString('utf-8'));
-                const b64 = parsed?.result?.image || parsed?.result;
-                if (b64 && typeof b64 === 'string') return Buffer.from(b64, 'base64');
-              } catch (e) {}
-            }
-            return buf;
-          }
-        } else {
-          const errBody = await response.text();
-          console.warn(`[RuneAi] Cloudflare AI Modello ${model} HTTP ${response.status}:`, errBody);
-        }
-      } catch (e) {
-        console.warn(`[RuneAi] Errore modello immagine ${model}:`, e);
-      }
-    }
-    throw new Error("Impossibile generare l'immagine con i modelli Cloudflare disponibili.");
-  } catch (err) {
-    console.error("Errore nella generazione immagine:", err);
-    return null;
-  }
-}
 
 async function getAIResponse(messages, systemPrompt = DEFAULT_IDENTITY) {
   try {
@@ -260,9 +162,7 @@ client.on('messageCreate', async (message) => {
 INFORMAZIONI E STRUMENTI DISPONIBILI:
 - Puoi cercare sul web in tempo reale. Se la domanda richiede informazioni aggiornate o fatti non conosciuti, rispondi ESCLUSIVAMENTE con:
   [CERCA: termine da cercare]
-- Puoi GENERARE IMMAGINI in tempo reale. Se l'utente ti chiede di generare, disegnare, creare o mostrare un'immagine, un disegno, una foto o un'illustrazione, rispondi ESCLUSIVAMENTE con il tag:
-  [DISEGNA: descrizione dettagliata dell'immagine da generare in lingua inglese]
-  Non aggiungere altro testo se decidi di generare un'immagine.
+  Non aggiungere altro testo se decidi di cercare.
 
 ISTRUZIONI NOMI E RUOLI DEGLI UTENTI:
 - Ogni messaggio utente indica il nome reale dell'utente e il suo ruolo tra parentesi.
