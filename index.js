@@ -43,39 +43,6 @@ async function getAIResponse(messages, systemPrompt = DEFAULT_IDENTITY) {
 
     let reply = "";
 
-    if (model.startsWith('gemini-')) {
-      const geminiApiKey = process.env.GEMINI_API_KEY?.trim();
-      if (!geminiApiKey) {
-        throw new Error("GEMINI_API_KEY non trovata nel file .env per usare il modello Gemini");
-      }
-
-      const contents = messages.map(m => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }]
-      }));
-
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: systemPrompt }] },
-            contents: contents
-          })
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Gemini API Error:', errorText);
-        throw new Error(`Gemini API Error: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      reply = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!reply) throw new Error("Risposta vuota da Gemini API");
-    } else {
       const accountId = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
       const apiToken = process.env.CLOUDFLARE_API_TOKEN?.trim();
 
@@ -106,7 +73,6 @@ async function getAIResponse(messages, systemPrompt = DEFAULT_IDENTITY) {
       const result = await response.json();
       reply = result?.result?.response;
       if (!reply) throw new Error("Risposta vuota dall'IA");
-    }
 
     const lastUserMessage = messages[messages.length - 1]?.content?.toLowerCase() || "";
     const wantsDetail = lastUserMessage.includes("approfondi") ||
