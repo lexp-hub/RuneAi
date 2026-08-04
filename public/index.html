@@ -762,26 +762,43 @@
       });
     });
 
+    async function safeFetchJson(endpoint, options = {}) {
+      const targetUrl = `${backendUrl || window.location.origin}${endpoint}`;
+      const res = await fetch(targetUrl, options);
+      if (res.status === 401) {
+        logout();
+        showToast('Sessione scaduta o password errata, effettua di nuovo il login', 'danger');
+        return null;
+      }
+      if (!res.ok) {
+        throw new Error(`Risposta server HTTP ${res.status}: ${res.statusText}`);
+      }
+      const text = await res.text();
+      if (!text || text.trim().startsWith('<')) {
+        throw new Error(`L'URL (${targetUrl}) ha risposto con una pagina HTML invece che JSON. Verifica l'URL del bot.`);
+      }
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        throw new Error(`Formato dati non valido da ${endpoint}`);
+      }
+    }
+
     async function checkAuthAndLoad() {
       try {
-        const res = await fetch(`${backendUrl || window.location.origin}/api/status`, {
+        const status = await safeFetchJson('/api/status', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (res.ok) {
+        if (status) {
           document.getElementById('login-screen').style.display = 'none';
           document.getElementById('dashboard-screen').style.display = 'block';
           await loadDashboardData(false);
           startStatsPolling();
-        } else {
-          localStorage.removeItem('runeai_token');
-          token = '';
-          document.getElementById('login-screen').style.display = 'flex';
-          document.getElementById('dashboard-screen').style.display = 'none';
-          stopStatsPolling();
         }
       } catch (err) {
-        showToast('Impossibile connettersi al backend', 'danger');
+        showToast(`Connessione fallita: ${err.message}`, 'danger');
         document.getElementById('login-screen').style.display = 'flex';
+        document.getElementById('dashboard-screen').style.display = 'none';
         stopStatsPolling();
       } finally {
         hideLoader();
@@ -790,18 +807,10 @@
 
     async function loadDashboardData(isSilent = false) {
       try {
-        const statusRes = await fetch(`${backendUrl || window.location.origin}/api/status`, {
+        const status = await safeFetchJson('/api/status', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-
-        if (statusRes.status === 401) {
-          logout();
-          if (!isSilent) showToast('Sessione scaduta, effettua nuovamente il login', 'danger');
-          return;
-        }
-
-        if (!statusRes.ok) throw new Error("Status API error");
-        const status = await statusRes.json();
+        if (!status) return;
 
         document.getElementById('header-bot-tag').textContent = status.botTag || 'RuneAi';
         const dot = document.getElementById('header-status-dot');
@@ -825,11 +834,10 @@
 
         if (!isSilent) {
           try {
-            const configRes = await fetch(`${backendUrl || window.location.origin}/api/config`, {
+            const config = await safeFetchJson('/api/config', {
               headers: { 'Authorization': `Bearer ${token}` }
             });
-            if (configRes.ok) {
-              const config = await configRes.json();
+            if (config) {
               if (document.activeElement !== document.getElementById('config-identity') && config.baseIdentity) {
                 document.getElementById('config-identity').value = config.baseIdentity;
               }
@@ -846,7 +854,7 @@
       } catch (err) {
         console.error('loadDashboardData error:', err);
         if (!isSilent) {
-          showToast(`Errore nel caricamento dati: ${err.message || 'Connessione fallita'}`, 'danger');
+          showToast(`Errore nel caricamento dati: ${err.message}`, 'danger');
         }
       }
     }
@@ -854,13 +862,10 @@
     async function loadChannels(isSilent = false) {
       const container = document.getElementById('channel-list-container');
       try {
-        const res = await fetch(`${backendUrl || window.location.origin}/api/history`, {
+        const channels = await safeFetchJson('/api/history', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (!res.ok) return;
-        const channels = await res.json();
-        
-        if (!Array.isArray(channels) || channels.length === 0) {
+        if (!channels || !Array.isArray(channels) || channels.length === 0) {
           container.innerHTML = '<p style="font-size: 13px; color: var(--text-muted); text-align: center; padding: 20px;">Nessun canale registrato in memoria.</p>';
           return;
         }
