@@ -793,10 +793,17 @@
         const statusRes = await fetch(`${backendUrl || window.location.origin}/api/status`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (!statusRes.ok) throw new Error();
+
+        if (statusRes.status === 401) {
+          logout();
+          if (!isSilent) showToast('Sessione scaduta, effettua nuovamente il login', 'danger');
+          return;
+        }
+
+        if (!statusRes.ok) throw new Error("Status API error");
         const status = await statusRes.json();
 
-        document.getElementById('header-bot-tag').textContent = status.botTag;
+        document.getElementById('header-bot-tag').textContent = status.botTag || 'RuneAi';
         const dot = document.getElementById('header-status-dot');
         if (status.discordStatus === 'Online') {
           dot.className = 'status-dot';
@@ -807,25 +814,31 @@
           document.getElementById('stat-discord').textContent = 'Offline';
           document.getElementById('stat-discord').style.color = 'var(--danger-color)';
         }
-        document.getElementById('stat-ping').textContent = status.ping + ' ms';
+        document.getElementById('stat-ping').textContent = (status.ping || 0) + ' ms';
         
-        const seconds = status.uptime;
+        const seconds = status.uptime || 0;
         const h = Math.floor(seconds / 3600);
         const m = Math.floor((seconds % 3600) / 60);
         const s = seconds % 60;
         document.getElementById('stat-uptime').textContent = `${h}h ${m}m ${s}s`;
-        document.getElementById('stat-ram').textContent = status.memoryUsage;
+        document.getElementById('stat-ram').textContent = status.memoryUsage || '-- MB';
 
         if (!isSilent) {
-          const configRes = await fetch(`${backendUrl || window.location.origin}/api/config`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          const config = await configRes.json();
-          if (document.activeElement !== document.getElementById('config-identity')) {
-            document.getElementById('config-identity').value = config.baseIdentity;
-          }
-          if (document.activeElement !== document.getElementById('config-model')) {
-            document.getElementById('config-model').value = config.cloudflareModel;
+          try {
+            const configRes = await fetch(`${backendUrl || window.location.origin}/api/config`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (configRes.ok) {
+              const config = await configRes.json();
+              if (document.activeElement !== document.getElementById('config-identity') && config.baseIdentity) {
+                document.getElementById('config-identity').value = config.baseIdentity;
+              }
+              if (document.activeElement !== document.getElementById('config-model') && config.cloudflareModel) {
+                document.getElementById('config-model').value = config.cloudflareModel;
+              }
+            }
+          } catch (e) {
+            console.warn('Errore lettura config:', e);
           }
         }
 
