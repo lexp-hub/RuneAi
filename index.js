@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits } from 'discord.js';
+import { Client, GatewayIntentBits, AttachmentBuilder } from 'discord.js';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import { ChatHistoryManager } from './history.js';
@@ -30,6 +30,50 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
   ]
 });
+
+async function generateAIImage(prompt) {
+  try {
+    const accountId = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
+    const apiToken = process.env.CLOUDFLARE_API_TOKEN?.trim();
+
+    if (!accountId || !apiToken) {
+      throw new Error("Credenziali Cloudflare mancanti in .env (CLOUDFLARE_ACCOUNT_ID o CLOUDFLARE_API_TOKEN)");
+    }
+
+    const imageModels = [
+      "@cf/black-forest-labs/flux-1-schnell",
+      "@cf/bytedance/stable-diffusion-xl-lightning",
+      "@cf/stabilityai/stable-diffusion-xl-base-1.0"
+    ];
+
+    for (const model of imageModels) {
+      try {
+        const response = await fetch(
+          `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${apiToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ prompt }),
+          }
+        );
+
+        if (response.ok) {
+          const arrayBuffer = await response.arrayBuffer();
+          return Buffer.from(arrayBuffer);
+        }
+      } catch (e) {
+        console.warn(`[RuneAi] Errore modello immagine ${model}, provo fallback...`);
+      }
+    }
+    throw new Error("Impossibile generare l'immagine con i modelli Cloudflare disponibili.");
+  } catch (err) {
+    console.error("Errore nella generazione immagine:", err);
+    return null;
+  }
+}
 
 async function getAIResponse(messages, systemPrompt = DEFAULT_IDENTITY) {
   try {
@@ -150,9 +194,11 @@ client.on('messageCreate', async (message) => {
     const systemPrompt = `${DEFAULT_IDENTITY}
 
 INFORMAZIONI E STRUMENTI DISPONIBILI:
-- Puoi cercare sul web in tempo reale. Se la domanda richiede informazioni aggiornate, notizie recenti, fatti specifici che non conosci, o se ritieni sia necessario verificare qualcosa, rispondi ESCLUSIVAMENTE con il tag:
+- Puoi cercare sul web in tempo reale. Se la domanda richiede informazioni aggiornate o fatti non conosciuti, rispondi ESCLUSIVAMENTE con:
   [CERCA: termine da cercare]
-  Non aggiungere altro testo o spiegazioni se decidi di cercare. Il sistema effettuerà la ricerca e ti fornirà i risultati, dopodiché potrai formulare la risposta finale.
+- Puoi GENERARE IMMAGINI in tempo reale. Se l'utente ti chiede di generare, disegnare, creare o mostrare un'immagine, un disegno, una foto o un'illustrazione, rispondi ESCLUSIVAMENTE con il tag:
+  [DISEGNA: descrizione dettagliata dell'immagine da generare in lingua inglese]
+  Non aggiungere altro testo se decidi di generare un'immagine.
 
 ISTRUZIONI NOMI E RUOLI DEGLI UTENTI:
 - Ogni messaggio utente indica il nome reale dell'utente e il suo ruolo tra parentesi.
@@ -242,6 +288,26 @@ ISTRUZIONI NOMI E RUOLI DEGLI UTENTI:
     }
 
     let reply = await getAIResponse(messages, systemPrompt);
+
+    const drawMatch = reply.match(/\[DISEGNA:\s*(.*?)\]/i);
+    if (drawMatch) {
+      const imagePrompt = drawMatch[1].trim();
+      console.log(`[RuneAi] Generazione immagine richiesta per: "${imagePrompt}"`);
+
+      const imageBuffer = await generateAIImage(imagePrompt);
+
+      if (imageBuffer) {
+        const attachment = new AttachmentBuilder(imageBuffer, { name: 'runeai-image.png' });
+        chatHistory.addLog(message.channel.id, 'user', `${message.author.username}: ${question}`);
+        chatHistory.addLog(message.channel.id, 'assistant', `[Immagine Generata: ${imagePrompt}]`);
+        return message.reply({
+          content: `Ecco l'immagine richiesta per: *"${imagePrompt}"*`,
+          files: [attachment]
+        });
+      } else {
+        reply = "Ho provato a generare l'immagine, ma l'algoritmo si è rifiutato. Riprova con una descrizione diversa.";
+      }
+    }
 
     const searchMatch = reply.match(/\[CERCA:\s*(.*?)\]/i);
     if (searchMatch) {
