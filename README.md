@@ -13,22 +13,5 @@ RuneAi è un bot Discord avanzato che integra l'intelligenza artificiale di **Cl
 - **Controllo Memoria**: È possibile forzare il bot a dimenticare i messaggi precedenti al momento corrente per un canale menzionandolo e scrivendo `reset`, `clear`, `cancella memoria` o `dimentica tutto`.
 - **Pannello di Controllo Web**: Interfaccia web integrata e protetta da password per monitorare le metriche di runtime (latenza, uptime, RAM), modificare e salvare la personalità in tempo reale, selezionare il modello e gestire o pulire la cronologia dei singoli canali.
 
-## 💻 Pannello di Controllo
-Il pannello è integrato nel bot. All'avvio del bot, il pannello sarà disponibile su:
-`http://localhost:3000` (o sulla porta configurata in `DASHBOARD_PORT`).
-
-Puoi configurare l'accesso nel file `.env`:
-- `DASHBOARD_PORT`: la porta su cui avviare il pannello (default: `3000`).
-- `DASHBOARD_PASSWORD`: la password di amministrazione per effettuare il login.
-
-### 🌐 Hosting del Pannello su Cloudflare Pages
-Puoi pubblicare l'interfaccia frontend del pannello (la cartella `public/`) su Cloudflare Pages in modo da accedervi ovunque in sicurezza:
-1. Installa wrangler ed effettua il deploy della cartella statica:
-   ```bash
-   npx wrangler pages deploy public --project-name runeai-dashboard
-   ```
-2. Apri il link fornito da Cloudflare Pages (es: `https://runeai-dashboard.pages.dev`).
-3. Nella schermata di login, inserisci l'URL pubblico del tuo bot su Wispbyte (es: `http://tuo-ip-wispbyte:3000`) e la password impostata nel file `.env` del bot. Il browser salverà l'URL ed effettuerà le chiamate API protette e abilitate via CORS direttamente al tuo bot.
-
 ## ✒️ Autore
 Sviluppato da **lexproj**.
